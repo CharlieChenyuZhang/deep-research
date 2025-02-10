@@ -21,7 +21,7 @@ function askQuestion(query: string): Promise<string> {
 // run the agent
 async function run() {
   // Get initial query
-  const initialQuery = await askQuestion('What would you like to research? ');
+  const initialQuery = await askQuestion('What would you like to build? ');
 
   // Get breath and depth parameters
   const breadth =
@@ -37,7 +37,7 @@ async function run() {
       10,
     ) || 2;
 
-  console.log(`Creating research plan...`);
+  console.log(`Creating product research plan...`);
 
   // Generate follow-up questions
   const followUpQuestions = await generateFeedback({

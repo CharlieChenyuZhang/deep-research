@@ -30,16 +30,14 @@ async function generateSerpQueries({
 }: {
   query: string;
   numQueries?: number;
-
-  // optional, if provided, the research will continue from the last learning
   learnings?: string[];
 }) {
   const res = await generateObject({
     model: o3MiniModel,
     system: systemPrompt(),
-    prompt: `Given the following prompt from the user, generate a list of SERP queries to research the topic. Return a maximum of ${numQueries} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and not similar to each other: <prompt>${query}</prompt>\n\n${
+    prompt: `Given the following prompt from the user, generate a list of SERP queries to gather product requirements from similar websites. Return a maximum of ${numQueries} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and not similar to each other: <prompt>${query}</prompt>\n\n${
       learnings
-        ? `Here are some learnings from previous research, use them to generate more specific queries: ${learnings.join(
+        ? `Here are some learnings from previous product research, use them to generate more specific queries: ${learnings.join(
             '\n',
           )}`
         : ''
@@ -52,7 +50,7 @@ async function generateSerpQueries({
             researchGoal: z
               .string()
               .describe(
-                'First talk about the goal of the research that this query is meant to accomplish, then go deeper into how to advance the research once the results are found, mention additional research directions. Be as specific as possible, especially for additional research directions.',
+                'First talk about the goal of gathering product requirements that this query is meant to accomplish, then go deeper into how to advance the product product research once the results are found, mention additional product research directions. Be as specific as possible, especially for additional product research directions.',
               ),
           }),
         )
@@ -87,22 +85,22 @@ async function processSerpResult({
     model: o3MiniModel,
     abortSignal: AbortSignal.timeout(60_000),
     system: systemPrompt(),
-    prompt: `Given the following contents from a SERP search for the query <query>${query}</query>, generate a list of learnings from the contents. Return a maximum of ${numLearnings} learnings, but feel free to return less if the contents are clear. Make sure each learning is unique and not similar to each other. The learnings should be concise and to the point, as detailed and information dense as possible. Make sure to include any entities like people, places, companies, products, things, etc in the learnings, as well as any exact metrics, numbers, or dates. The learnings will be used to research the topic further.\n\n<contents>${contents
+    prompt: `Given the following contents from a SERP search for the query <query>${query}</query>, generate a list of product requirements from the contents. Return a maximum of ${numLearnings} requirements, but feel free to return less if the contents are clear. Make sure each requirement is unique and not similar to each other. The requirements should be concise and to the point, as detailed and information dense as possible. Make sure to include any entities like features, functionalities, user needs, etc in the requirements, as well as any exact metrics, numbers, or dates. The requirements will be used to develop the product further.\n\n<contents>${contents
       .map(content => `<content>\n${content}\n</content>`)
       .join('\n')}</contents>`,
     schema: z.object({
       learnings: z
         .array(z.string())
-        .describe(`List of learnings, max of ${numLearnings}`),
+        .describe(`List of product requirements, max of ${numLearnings}`),
       followUpQuestions: z
         .array(z.string())
         .describe(
-          `List of follow-up questions to research the topic further, max of ${numFollowUpQuestions}`,
+          `List of follow-up questions to gather more product requirements, max of ${numFollowUpQuestions}`,
         ),
     }),
   });
   console.log(
-    `Created ${res.object.learnings.length} learnings`,
+    `Created ${res.object.learnings.length} requirements`,
     res.object.learnings,
   );
 
@@ -120,7 +118,7 @@ export async function writeFinalReport({
 }) {
   const learningsString = trimPrompt(
     learnings
-      .map(learning => `<learning>\n${learning}\n</learning>`)
+      .map(learning => `<requirement>\n${learning}\n</requirement>`)
       .join('\n'),
     150_000,
   );
@@ -128,15 +126,13 @@ export async function writeFinalReport({
   const res = await generateObject({
     model: o3MiniModel,
     system: systemPrompt(),
-    prompt: `Given the following prompt from the user, write a final report on the topic using the learnings from research. Make it as as detailed as possible, aim for 3 or more pages, include ALL the learnings from research:\n\n<prompt>${prompt}</prompt>\n\nHere are all the learnings from previous research:\n\n<learnings>\n${learningsString}\n</learnings>`,
+    prompt: `Given the following prompt from the user, write a Product Requirement Document (PRD) using the requirements gathered from product research. Make it as detailed as possible, aim for a comprehensive document, include ALL the requirements from product research:\n\n<prompt>${prompt}</prompt>\n\nHere are all the requirements from previous product research:\n\n<requirements>\n${learningsString}\n</requirements>`,
     schema: z.object({
-      reportMarkdown: z
-        .string()
-        .describe('Final report on the topic in Markdown'),
+      reportMarkdown: z.string().describe('Final PRD on the topic in Markdown'),
     }),
   });
 
-  // Append the visited URLs section to the report
+  // Append the visited URLs section to the PRD
   const urlsSection = `\n\n## Sources\n\n${visitedUrls.map(url => `- ${url}`).join('\n')}`;
   return res.object.reportMarkdown + urlsSection;
 }
@@ -190,8 +186,8 @@ export async function deepResearch({
             );
 
             const nextQuery = `
-            Previous research goal: ${serpQuery.researchGoal}
-            Follow-up research directions: ${newLearnings.followUpQuestions.map(q => `\n${q}`).join('')}
+            Previous product research goal: ${serpQuery.researchGoal}
+            Follow-up product research directions: ${newLearnings.followUpQuestions.map(q => `\n${q}`).join('')}
           `.trim();
 
             return deepResearch({
